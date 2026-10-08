@@ -21,7 +21,7 @@ export const isAuthenticated = async (req,res,next)=>{
 
     next()
 
-}
+}   
 
 
  

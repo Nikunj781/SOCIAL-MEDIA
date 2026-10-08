@@ -11,7 +11,7 @@ export const createPost = async (req, res) => {
 
         // write some validations
 
-        if (!caption.trim()) {
+        if (typeof caption !== "string" || !caption.trim()) {
             return res.status(400).json({ message: 'Please add a Caption' })
         }
 
@@ -37,12 +37,12 @@ export const createPost = async (req, res) => {
         })
 
         // add the postID inside posts array of the User
-        User.findByIdAndUpdate(req.user._id, {
+        await User.findByIdAndUpdate(req.user._id, {
             $push: { posts: postCreated.id }
         })
-      // relate the post with userData(username , profileImage , name)
-        
-      const populatedPost = await Post.findById(postCreated.id).populate('author' , "name username profileImage")
+        // relate the post with userData(username , profileImage , name)
+
+        const populatedPost = await Post.findById(postCreated.id).populate('author', "name username profileImage")
 
 
         // send the Response
@@ -50,6 +50,64 @@ export const createPost = async (req, res) => {
         res.status(201).json({ message: "Post Created", post: populatedPost })
 
     } catch (error) {
-
+        return res.status(500).json({ message: 'Internal Server Errorr', error })
     }
 }
+
+export const getPosts = async (req, res) => {
+    try {
+        const posts = await Post.find().sort({ createdAt: -1 }).populate('author', "name username profileImage")
+
+        if (!posts) {
+            res.status(404).json({ message: "No posts found" })
+        }
+
+
+        res.status(200).json({ message: "Posts Found", posts: posts })
+
+
+    } catch (error) {
+        return res.status(500).json({ message: 'Internal Server Errorr', error })
+    }
+}
+
+export const updateLikes = async (req, res) => {
+    try {
+
+        // post id
+        const postId = req.params.id
+
+        const post = await Post.findById(postId)
+
+        console.log(post)
+
+        // user id 
+        const userId = req.user._id
+
+        // check if the post is already liked - Unlike or we like
+
+        const alreadyLiked = post.likes.some((id) => id.toString() === userId.toString())
+
+        if (alreadyLiked) {
+            // We Unlike
+            post.likes.pull(userId)
+        } else {
+            // We Like
+            post.likes.push(userId)
+        }
+
+        await post.save()
+
+  
+
+
+        res.status(200).json({ message: alreadyLiked ? "Unliked" : "Liked", count: post.likes.length })
+
+        // Post <-model <- Likes <- userId
+
+    } catch (error) {
+        return res.status(500).json({ message: 'Internal Server Errorr', error })
+    }
+}
+
+      // try to get out the username from the userId stored
